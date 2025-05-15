@@ -58,7 +58,7 @@ i=0
 for root, _, files in os.walk(source_root):
     for file in files:
         i=i+1
-        if i>10000000:
+        if i>10:
             break
         file_path = os.path.join(root, file)
         ext = os.path.splitext(file)[1].lower()
@@ -78,7 +78,7 @@ for root, _, files in os.walk(source_root):
             file_type = "사진" if ext in image_extensions else "동영상"
 
             file_data.append({
-                "파일경로": rel_path,
+                "파일경로": file_path,
                 "파일명": file,
                 "파일수정일": datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
                 "파일생성일": datetime.fromtimestamp(stat.st_ctime).strftime("%Y-%m-%d %H:%M:%S"),
