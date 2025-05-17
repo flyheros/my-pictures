@@ -85,7 +85,7 @@ for root, _, files in os.walk(source_root):
                 "촬영일": create_dt, 
                 "파일유형": file_type,
                 "파일크기(Byte)": stat.st_size,
-                "파일해쉬쉬": file_hash,
+                "파일해쉬": file_hash,
                 "파일유사도해쉬": str(file_average_hash),
             })
             print(i)
