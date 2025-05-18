@@ -8,9 +8,9 @@ from PIL.ExifTags import TAGS
 
 # 설정
 source_root = r"C:\사진_20240726_1231"
-source_root= r"D:\사진\원본\핸드폰사진_핸드폰에 그대로있음"
+# source_root= r"D:\사진\원본\핸드폰사진_핸드폰에 그대로있음"
 thumbnail_root = r"C:\썸네일"
-thumbnail_root = r"d:\썸네일"
+# thumbnail_root = r"d:\썸네일"
 csv_output = "file_result.csv"
 
 # 처리할 이미지 확장자
@@ -57,9 +57,10 @@ def make_thumbnail(source_path, thumbnail_path):
 i=0
 for root, _, files in os.walk(source_root):
     for file in files:
+
+        # if i>10:
+        #     break       
         i=i+1
-        if i>10:
-            break
         file_path = os.path.join(root, file)
         ext = os.path.splitext(file)[1].lower()
 
@@ -80,9 +81,9 @@ for root, _, files in os.walk(source_root):
             file_data.append({
                 "파일경로": file_path,
                 "파일명": file,
-                "파일수정일": datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
-                "파일생성일": datetime.fromtimestamp(stat.st_ctime).strftime("%Y-%m-%d %H:%M:%S"),
-                "촬영일": create_dt, 
+                "파일수정일시": datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
+                "파일생성일시": datetime.fromtimestamp(stat.st_ctime).strftime("%Y-%m-%d %H:%M:%S"),
+                "촬영일시": create_dt, 
                 "파일유형": file_type,
                 "파일크기(Byte)": stat.st_size,
                 "파일해쉬": file_hash,
@@ -101,8 +102,19 @@ for root, _, files in os.walk(source_root):
     
     if i>100:
         break
+    
 
 # CSV 저장
 df = pd.DataFrame(file_data)
+
+
+df['파일생성일'] = pd.to_datetime(df['파일생성일시'])
+df['파일수정일'] = pd.to_datetime(df['파일수정일시'])
+df['파일생성일'] = df['파일생성일'].dt.to_period('D')
+df['파일수정일'] = df['파일수정일'].dt.to_period('D')
+df['촬영일'] = pd.to_datetime(df['촬영일시'].str[:10].str.replace(":", "-")).dt.to_period('D')
+ 
+
 df.to_csv(csv_output, index=False, encoding="utf-8-sig")
+
 print(f"\n완료: {len(file_data)}개의 파일 처리됨. 결과 -> {csv_output}")
