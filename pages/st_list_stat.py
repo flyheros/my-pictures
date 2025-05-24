@@ -6,6 +6,8 @@ from PIL.ExifTags import TAGS
 import streamlit as st
 import pandas as pd
 from st_utils import get_page_url
+from pathlib import Path
+import shutil
 
     
  
@@ -23,7 +25,7 @@ def show_list_stat():
         layout="wide"
     )
 
-    csv_path = r"C:\workspace\my-pictures\file_result.csv"
+    csv_path = r"C:\workspace\my-pictures\file_result2.csv"
     df = pd.read_csv(csv_path) 
     
     def get_file_stat(df, key_col):
@@ -36,6 +38,8 @@ def show_list_stat():
         file_hash_max=("파일해쉬", "max"),
         create_dt_min=("파일생성일", "min"),
         create_dt_max=("파일생성일", "max"),
+        file_path_min=("파일경로", "min"),
+        file_path_max=("파일경로", "max"),
         picture_dt_min=("촬영일", "min"),
         picture_dt_max=("촬영일", "max")).reset_index().sort_values(by=['file_count'], ascending=False)
         
@@ -45,13 +49,35 @@ def show_list_stat():
         # df_tmp.to_csv( f"{file_path}", index=False, encoding="utf-8-sig") 
         # print(f"완료: {len(df_tmp)}개의 파일 처리됨. 결과 -> {file_path}")
 
+    # 해당 폴더의 중복파일은 하나만 남기고 삭제 폴더로 이동 
+    def del_file_dup(file_path, del_hash):
+        del_file_path=r"C:\workspace\my-pictures\del_file"
+        # file_path = os.path.join(file_path, "20240726_185220 - 복사본.jpg") 
+        print("삭제파일", file_path)
+        # shutil.move(file_path, del_file_path)
+         
+        hasher = hashlib.md5()  # SHA256 도 가능
+        with open(file_path, 'rb') as f:
+            for chunk in iter(lambda: f.read(4096), b''):
+                hasher.update(chunk)
+
+        if hasher.hexdigest() == del_hash:
+            print("삭제파일", file_path)
+            # 파일 삭제 폴더로 이동
+            del_file_path = os.path.join(del_file_path, os.path.basename(file_path))
+            os.makedirs(os.path.dirname(del_file_path), exist_ok=True)  
+            try:
+                os.rename(file_path, del_file_path)
+                print(f"삭제 완료: {file_path} -> {del_file_path}")
+            except Exception as e:
+                print(f"삭제 실패: {file_path} -> {e}") 
 
 
+    dup_column = ['파일명', '파일해쉬', '촬영일', '파일생성일']
+    key_col = st.selectbox("집계 컬럼 선택", dup_column, index=1)
+    df_stat = get_file_stat(df, key_col)
 
-    sort_column = ['파일명', '파일해쉬', '촬영일', '파일생성일']
-    key_col = st.selectbox("정렬할 컬럼 선택", sort_column, index=0)
-    df = get_file_stat(df, key_col)
-
+    st.button("중복파일 삭제", on_click=del_file_dup, args=("C:\\사진_20240726_1231\\20241231_100853 - 복사본.jpg", "4e90ddece508a16aa7841617ab02613b"))
 
     # 가로로 2열 생성
     col1, col2 = st.columns([1, 1])  # 비율을 바꿔도 됨
@@ -60,10 +86,10 @@ def show_list_stat():
     with col1:
         col1_1, col1_2 = st.columns([1,1])
         with col1_1:
-            sort_column = st.selectbox("정렬할 컬럼 선택", df.columns)
+            sort_column = st.selectbox("정렬할 컬럼 선택", df_stat.columns, index=1)
         with col1_2:
-            sort_ascending = st.radio("정렬 순서", ["오름차순", "내림차순"]) == "오름차순"
-        df_sorted = df.sort_values(by=sort_column, ascending=sort_ascending)
+            sort_ascending = st.radio("정렬 순서", ["오름차순", "내림차순"], 1) == "오름차순"
+        df_sorted = df_stat.sort_values(by=sort_column, ascending=sort_ascending)
 
     # 페이징 처리
     with col2:
@@ -111,4 +137,17 @@ def show_list_stat():
     # 원본 데이터프레임도 표시 (참고용)
     st.subheader("원본 데이터 (링크 없음)")
     st.dataframe(df_display)
+    st.session_state.selected_image_path = "C:\\사진_20240726_1231\\20240726_185220 - 복사본.jpg"
 show_list_stat()
+
+
+# 이미지 팝업 (같은 페이지 내 하단에 표시)
+if st.session_state.selected_image_path:
+    st.markdown("---")
+    st.subheader("🖼 선택된 이미지 보기")
+    try:
+        # 이미지 로드
+        img = Image.open(Path(st.session_state.selected_image_path))
+        st.image(img, caption=Path(st.session_state.selected_image_path).name, use_column_width=True)
+    except Exception as e:
+        st.error(f"이미지를 불러올 수 없습니다: {e}")

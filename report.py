@@ -11,7 +11,7 @@ source_root = r"C:\사진_20240726_1231"
 # source_root= r"D:\사진\원본\핸드폰사진_핸드폰에 그대로있음"
 thumbnail_root = r"C:\썸네일"
 # thumbnail_root = r"d:\썸네일"
-csv_output = "file_result.csv"
+csv_output = "file_result3.csv"
 
 # 처리할 이미지 확장자
 image_extensions = ['.jpg', '.jpeg', '.png', '.bmp', '.gif', '.tiff', '.webp']
@@ -61,6 +61,8 @@ for root, _, files in os.walk(source_root):
         # if i>10:
         #     break       
         i=i+1
+        print(root)
+        print(file)
         file_path = os.path.join(root, file)
         ext = os.path.splitext(file)[1].lower()
 

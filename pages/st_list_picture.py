@@ -8,7 +8,7 @@ from st_utils import get_page_url
 
 # 설정
 thumbnail_root = r"C:\썸네일"
-csv_path = r"C:\workspace\my-pictures\file_result.csv"
+csv_path = r"C:\workspace\my-pictures\file_result2.csv"
 
 col = None
 val = None
@@ -67,7 +67,7 @@ else:
             buffer = BytesIO()
             img.save(buffer, format="PNG")
             encoded = base64.b64encode(buffer.getvalue()).decode()
-            return f'<img src="data:image/png;base64,{encoded}" width="100"/>'
+            return f'<img src="data:image/png;base64,{encoded}" width="150"/>'
         except:
             return "불러오기 실패"
 
@@ -76,9 +76,9 @@ else:
         lambda x: image_to_base64(x) if os.path.exists(x) else '파일 없음'
     )
     df = df.drop('썸네일경로', axis=1)
-
+ 
     # 컬럼 순서 지정
-    columns_to_show =  ['번호']  + [col for col in df.columns if col != '번호']  
+    columns_to_show =  ['번호', '미리보기']  + [col for col in df.columns if col not in ['번호', '미리보기']]  
 
     # 가로로 2열 생성
     col1, col2 = st.columns([1, 1])  # 비율을 바꿔도 됨
@@ -98,13 +98,12 @@ else:
     start_idx = (page - 1) * items_per_page
     end_idx = start_idx + items_per_page
     df_page = df.iloc[start_idx:end_idx]
-
-        
-    # 기본 to_html로 생성
-    html_table = df_page[columns_to_show]
     
+    html_table = df_page[columns_to_show].to_html(escape=False, index=False, col_space=None)
+    
+    html_with_font_size = html_table.replace('<table border="1" class="dataframe">', '<table border="1" class="dataframe" style="font-size: 9pt;">')
     # HTML로 렌더링
-    st.markdown(html_table.to_html(escape=False), unsafe_allow_html=True)
+    st.markdown(html_with_font_size, unsafe_allow_html=True)
 
 #     # ✅ <table> 태그에 width: 90% 스타일 직접 삽입
 #     html_table = html_table.replace('<table border="1" class="dataframe">', '<table border="1" class="dataframe" style="width:100%">')
