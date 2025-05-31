@@ -7,7 +7,15 @@ import streamlit as st
 import pandas as pd
 from st_utils import get_page_url
 from pathlib import Path
-import shutil
+from dotenv import load_dotenv
+load_dotenv()
+
+# 설정
+ 
+thumbnail_folder = os.getenv('thumbnail_folder', r"C:\workspace\my-pictures\thumbnail")
+result_output = os.getenv('result_output', r"C:\workspace\my-pictures\result.csv") 
+del_file_folder  = os.getenv('thumbnail_folder', r"C:\workspace\my-pictures\thumbnail")  
+csv_path = os.path.join("." , result_output)
 
     
  
@@ -16,6 +24,7 @@ def go_to_picutre(selected_col, selected_val):
     st.session_state.selected_col = selected_col
     st.session_state.selected_val = selected_val
     st.session_state.page = 'st_list_picture'
+ 
 
 def show_list_stat():
     
@@ -24,9 +33,12 @@ def show_list_stat():
         page_icon="🔍",
         layout="wide"
     )
-
-    csv_path = r"C:\workspace\my-pictures\file_result2.csv"
     df = pd.read_csv(csv_path) 
+    df['촬영일시'] = df['촬영일'] 
+    df['촬영일'] = df['촬영일시'].apply(lambda x:x[:10] if isinstance(x, str) else x)  # '촬영일' 컬럼에서 날짜 부분만 추출
+    df['파일생성일시'] = df['파일생성일'] 
+    df['파일생성일'] = pd.to_datetime(df['파일생성일시'], errors='coerce').dt.date  # '파일생성일' 컬럼을 datetime으로 변환
+    df['folder_path'] = df['파일경로'].apply(lambda x: os.path.dirname(x))
     
     def get_file_stat(df, key_col):
 
@@ -38,11 +50,40 @@ def show_list_stat():
         file_hash_max=("파일해쉬", "max"),
         create_dt_min=("파일생성일", "min"),
         create_dt_max=("파일생성일", "max"),
+        create_dttm_min=("파일생성일시", "min"),
+        create_dttm_max=("파일생성일시", "max"),
         file_path_min=("파일경로", "min"),
         file_path_max=("파일경로", "max"),
+        file_folder=("folder_path", "unique"),
         picture_dt_min=("촬영일", "min"),
-        picture_dt_max=("촬영일", "max")).reset_index().sort_values(by=['file_count'], ascending=False)
-        
+        picture_dt_max=("촬영일", "max"),
+        picture_dttm_min=("촬영일시", "min"),
+        picture_dttm_max=("촬영일시", "max")).reset_index().sort_values(by=['file_count'], ascending=False)
+
+        if key_col=="파일명":
+            keywords = ["file_name", 'picture_dt_', 'create_dt_']
+            # df_tmp=df_tmp.drop(columns=[col for col in df_tmp.columns if "file_name" in col ], axis=1)  # 불필요한 컬럼 제거
+            df_tmp = df_tmp.loc[:, ~df_tmp.columns.str.contains('file_name')]  # 'file_name'이 포함된 컬럼 제거
+        elif key_col=="파일해쉬":
+            keywords = ["file_hash", 'picture_dt_', 'create_dt_']
+            # df_tmp=df_tmp.drop(columns=[col for col in df_tmp.columns if "file_hash" in col ], axis=1)  # 불필요한 컬럼 제거
+            df_tmp = df_tmp.loc[:, ~df_tmp.columns.str.contains('file_hash')]  # 'file_name'이 포함된 컬럼 제거
+        elif key_col=="파일생성일":
+            keywords = ["create_dt", 'picture_dt_', 'create_dt_']
+            # df_tmp=df_tmp.drop(columns=[col for col in df_tmp.columns if "create_dt" in col ], axis=1)  # 불필요한 컬럼 제거
+            df_tmp = df_tmp.loc[:, ~df_tmp.columns.str.contains('create_dt')]  # 'file_name'이 포함된 컬럼 제거
+        elif key_col=="파일경로":
+            keywords = ["file_path", 'picture_dt_', 'create_dt_']
+            # df_tmp=df_tmp.drop(columns=[col for col in df_tmp.columns if "file_path" in col ], axis=1)  # 불필요한 컬럼 제거
+            df_tmp = df_tmp.loc[:, ~df_tmp.columns.str.contains('file_path')]  # 'file_name'이 포함된 컬럼 제거
+        elif key_col=="촬영일":
+            keywords = ["picture_dt", 'picture_dt_', 'create_dt_']
+            # df_tmp=df_tmp.drop(columns=[col for col in df_tmp.columns if "picture_dt" in col ], axis=1)  # 불필요한 컬럼 제거
+            df_tmp = df_tmp.loc[:, ~df_tmp.columns.str.contains('picture_dt')]  # 'file_name'이 포함된 컬럼 제거
+            
+            
+        df_tmp = df_tmp.drop(columns=[col for col in df_tmp.columns if any(keyword in col for keyword in keywords)])
+        print(df_tmp.columns)
         return df_tmp
 
         # file_path=csv_path.replace("result.csv", f"result_{key_col}.csv")
@@ -50,11 +91,10 @@ def show_list_stat():
         # print(f"완료: {len(df_tmp)}개의 파일 처리됨. 결과 -> {file_path}")
 
     # 해당 폴더의 중복파일은 하나만 남기고 삭제 폴더로 이동 
-    def del_file_dup(file_path, del_hash):
-        del_file_path=r"C:\workspace\my-pictures\del_file"
+    def del_file_dup(file_path, del_hash): 
         # file_path = os.path.join(file_path, "20240726_185220 - 복사본.jpg") 
         print("삭제파일", file_path)
-        # shutil.move(file_path, del_file_path)
+        # shutil.move(file_path, del_file_folder)
          
         hasher = hashlib.md5()  # SHA256 도 가능
         with open(file_path, 'rb') as f:
@@ -64,7 +104,7 @@ def show_list_stat():
         if hasher.hexdigest() == del_hash:
             print("삭제파일", file_path)
             # 파일 삭제 폴더로 이동
-            del_file_path = os.path.join(del_file_path, os.path.basename(file_path))
+            del_file_path = os.path.join(del_file_folder, os.path.basename(file_path))
             os.makedirs(os.path.dirname(del_file_path), exist_ok=True)  
             try:
                 os.rename(file_path, del_file_path)

@@ -5,10 +5,14 @@ from PIL import Image
 import base64
 from io import BytesIO
 from st_utils import get_page_url
+from dotenv import load_dotenv
+load_dotenv()
 
 # 설정
-thumbnail_root = r"C:\썸네일"
-csv_path = r"C:\workspace\my-pictures\file_result2.csv"
+ 
+thumbnail_folder = os.getenv('thumbnail_folder', r"C:\workspace\my-pictures\thumbnail")
+result_output = os.getenv('result_output', r"C:\workspace\my-pictures\result.csv") 
+csv_path = f"C:\workspace\my-pictures\{result_output}"
 
 col = None
 val = None
@@ -47,7 +51,7 @@ else:
     df = df.drop(['썸네일생성결과', '파일유형'], axis=1)
 
     # 썸네일 경로 생성
-    df['썸네일경로'] = df['파일경로'].apply(lambda x: os.path.join(thumbnail_root, x))
+    df['썸네일경로'] = df['파일경로'].apply(lambda x: os.path.join(thumbnail_folder, x))
 
     df['번호'] = range(1, len(df) + 1)
 
