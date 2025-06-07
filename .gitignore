@@ -133,6 +133,7 @@ scripts/
 ENV/
 env.bak/
 venv.bak/
+file_out/
 
 # Spyder project settings
 .spyderproject

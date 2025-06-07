@@ -7,15 +7,22 @@ import hashlib
 from PIL.ExifTags import TAGS
 import streamlit as st 
 from dotenv import load_dotenv
+import socket
+
+
+computer_name = socket.gethostname()
 
 load_dotenv()
 
 # 처리할 이미지 확장자
 image_extensions = ['.jpg', '.jpeg', '.png', '.bmp', '.gif', '.tiff', '.webp']
 video_extensions = ['.mp4', '.avi', '.mov', '.mkv', '.wmv']
- 
-source_folder = os.getenv('source_folder')  # 기본값 포함
-print(source_folder)
+
+if computer_name == "DESKTOP-HU8FOFR":
+    source_folder = os.getenv('source_folder')  # 기본값 포함
+else:
+    source_folder = os.getenv('source_folder2')  # 기본값 포함
+    
 thumbnail_folder = os.getenv('thumbnail_folder')  # 기본값 포함
 result_output = os.getenv('result_output')  # 기본값 포함
 
@@ -122,8 +129,9 @@ if 'processing' not in st.session_state:
 if 'result_message' not in st.session_state:
     st.session_state.result_message = None
 
+print("컴퓨터 이름:", computer_name)
 
-st.sidebar.header("사진 통계 및 썸네일 생성 앱")
+st.sidebar.header( f"컴퓨터명: {computer_name}")
 st.sidebar.text("이미지 및 동영상 파일의 통계와 썸네일을 생성합니다.")
 
 with st.sidebar:
