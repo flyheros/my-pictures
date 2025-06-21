@@ -12,7 +12,7 @@ load_dotenv()
  
 thumbnail_folder = os.getenv('thumbnail_folder', r"C:\workspace\my-pictures\thumbnail")
 result_output = os.getenv('result_output', r"result.csv") 
-csv_path = f"C:\workspace\my-pictures\{result_output}"
+csv_path = f"{result_output}"
 
 col = None
 val = None

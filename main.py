@@ -34,16 +34,21 @@ def get_file_hash(file_path):
     return hasher.hexdigest()
 
 def get_taken_date(img_path):
+    print(img_path)
     image = Image.open(img_path)
-    exif_data = image._getexif()
+    try:
+        exif_data = image._getexif()
 
-    if not exif_data:
-        return "촬영 날짜 없음"
+        if not exif_data:
+            return "촬영 날짜 없음"
 
-    for tag_id, value in exif_data.items():
-        tag = TAGS.get(tag_id, tag_id)
-        if tag == 'DateTimeOriginal':  # 촬영 날짜
-            return value
+        for tag_id, value in exif_data.items():
+            tag = TAGS.get(tag_id, tag_id)
+            if tag == 'DateTimeOriginal':  # 촬영 날짜
+                return value
+    except Exception as e:
+        return "오류 발생: {}".format(e)
+    
 
 
 def make_thumbnail(source_path, thumbnail_path):
@@ -76,7 +81,7 @@ def make_report_file(source_root, thumbnail_root, csv_output, limit_n):
 
             if ext in image_extensions + video_extensions:
                 stat = os.stat(file_path)
-                rel_path = os.path.relpath(file_path, source_root)
+                # rel_path = os.path.relpath(file_path, source_root)
                 file_hash = get_file_hash(file_path)
                 if ext in image_extensions:
                 # 이미지 파일의 경우 해시와 유사도 해시 생성
@@ -88,7 +93,7 @@ def make_report_file(source_root, thumbnail_root, csv_output, limit_n):
                 file_type = "사진" if ext in image_extensions else "동영상"
 
                 file_data.append({
-                    "파일경로": rel_path,
+                    "파일경로": file_path,
                     "파일명": file,
                     "파일수정일": datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
                     "파일생성일": datetime.fromtimestamp(stat.st_ctime).strftime("%Y-%m-%d %H:%M:%S"),
@@ -101,8 +106,8 @@ def make_report_file(source_root, thumbnail_root, csv_output, limit_n):
 
                 # 썸네일 생성
                 if ext in image_extensions:
-                    thumb_path = os.path.join(thumbnail_root, rel_path)
-                    result_thumbnail = make_thumbnail(file_path, thumb_path)
+                    # thumb_path = os.path.join(thumbnail_root, rel_path)
+                    result_thumbnail = make_thumbnail(file_path, thumbnail_root)
                 else: 
                     result_thumbnail = "Not Applicable"
 

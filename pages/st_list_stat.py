@@ -7,6 +7,8 @@ import streamlit as st
 import pandas as pd
 from st_utils import get_page_url
 from pathlib import Path
+import base64
+from io import BytesIO
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -14,7 +16,7 @@ load_dotenv()
  
 thumbnail_folder = os.getenv('thumbnail_folder', r"C:\workspace\my-pictures\thumbnail")
 result_output = os.getenv('result_output', r"C:\workspace\my-pictures\result.csv") 
-del_file_folder  = os.getenv('thumbnail_folder', r"C:\workspace\my-pictures\thumbnail")  
+del_file_folder  = os.getenv('del_files', r"C:\workspace\my-pictures\del_files")  
 csv_path = os.path.join("." , result_output)
 
     
@@ -39,51 +41,43 @@ def show_list_stat():
     df['파일생성일시'] = df['파일생성일'] 
     df['파일생성일'] = pd.to_datetime(df['파일생성일시'], errors='coerce').dt.date  # '파일생성일' 컬럼을 datetime으로 변환
     df['folder_path'] = df['파일경로'].apply(lambda x: os.path.dirname(x))
+    # 썸네일 경로 생성
+    df['썸네일경로'] = df['파일경로'].apply(lambda x: os.path.join(thumbnail_folder, x))
+
+    # st.dataframe(df, use_container_width=True)
     
     def get_file_stat(df, key_col):
 
         df_tmp = df.groupby([key_col]).agg(
-        file_count=("파일명", "count"),
-        file_name_min=("파일명", "min"),
-        file_name_max=("파일명", "max"),
-        file_hash_min=("파일해쉬", "min"),
-        file_hash_max=("파일해쉬", "max"),
-        create_dt_min=("파일생성일", "min"),
-        create_dt_max=("파일생성일", "max"),
-        create_dttm_min=("파일생성일시", "min"),
-        create_dttm_max=("파일생성일시", "max"),
-        file_path_min=("파일경로", "min"),
-        file_path_max=("파일경로", "max"),
+        file_count=("파일명", "count"), 
         file_folder=("folder_path", "unique"),
-        picture_dt_min=("촬영일", "min"),
-        picture_dt_max=("촬영일", "max"),
-        picture_dttm_min=("촬영일시", "min"),
-        picture_dttm_max=("촬영일시", "max")).reset_index().sort_values(by=['file_count'], ascending=False)
+        thumnail_file=("썸네일경로", "max"), 
+        file_names=("파일명", "unique"),
+        # file_names=('파일명', lambda x: list(pd.unique(x.str.strip()))),
+        file_hashs=('파일해쉬', "unique"),
+        # create_dts=('파일생성일', lambda x: list(pd.unique(x.str.strip()))),
+        create_dttms=('파일생성일시', "unique"),
+        file_paths=('썸네일경로', "unique"),
+        picture_dttms=('촬영일시', "unique")).reset_index().sort_values(by=['file_count'], ascending=False)
 
-        if key_col=="파일명":
-            keywords = ["file_name", 'picture_dt_', 'create_dt_']
+        if key_col=="파일명": 
             # df_tmp=df_tmp.drop(columns=[col for col in df_tmp.columns if "file_name" in col ], axis=1)  # 불필요한 컬럼 제거
             df_tmp = df_tmp.loc[:, ~df_tmp.columns.str.contains('file_name')]  # 'file_name'이 포함된 컬럼 제거
-        elif key_col=="파일해쉬":
-            keywords = ["file_hash", 'picture_dt_', 'create_dt_']
+        elif key_col=="파일해쉬": 
             # df_tmp=df_tmp.drop(columns=[col for col in df_tmp.columns if "file_hash" in col ], axis=1)  # 불필요한 컬럼 제거
             df_tmp = df_tmp.loc[:, ~df_tmp.columns.str.contains('file_hash')]  # 'file_name'이 포함된 컬럼 제거
-        elif key_col=="파일생성일":
-            keywords = ["create_dt", 'picture_dt_', 'create_dt_']
+        elif key_col=="파일생성일": 
             # df_tmp=df_tmp.drop(columns=[col for col in df_tmp.columns if "create_dt" in col ], axis=1)  # 불필요한 컬럼 제거
             df_tmp = df_tmp.loc[:, ~df_tmp.columns.str.contains('create_dt')]  # 'file_name'이 포함된 컬럼 제거
-        elif key_col=="파일경로":
-            keywords = ["file_path", 'picture_dt_', 'create_dt_']
+        elif key_col=="파일경로": 
             # df_tmp=df_tmp.drop(columns=[col for col in df_tmp.columns if "file_path" in col ], axis=1)  # 불필요한 컬럼 제거
             df_tmp = df_tmp.loc[:, ~df_tmp.columns.str.contains('file_path')]  # 'file_name'이 포함된 컬럼 제거
-        elif key_col=="촬영일":
-            keywords = ["picture_dt", 'picture_dt_', 'create_dt_']
+        elif key_col=="촬영일": 
             # df_tmp=df_tmp.drop(columns=[col for col in df_tmp.columns if "picture_dt" in col ], axis=1)  # 불필요한 컬럼 제거
             df_tmp = df_tmp.loc[:, ~df_tmp.columns.str.contains('picture_dt')]  # 'file_name'이 포함된 컬럼 제거
             
             
-        df_tmp = df_tmp.drop(columns=[col for col in df_tmp.columns if any(keyword in col for keyword in keywords)])
-        print(df_tmp.columns)
+        # df_tmp = df_tmp.drop(columns=[col for col in df_tmp.columns if any(keyword in col for keyword in keywords)]) 
         return df_tmp
 
         # file_path=csv_path.replace("result.csv", f"result_{key_col}.csv")
@@ -112,10 +106,33 @@ def show_list_stat():
             except Exception as e:
                 print(f"삭제 실패: {file_path} -> {e}") 
 
+    # 이미지 → base64
+    def image_to_base64(filepath, max_size=(100, 100)):
+        try:
+            img = Image.open(filepath)
+            img.thumbnail(max_size)
+            buffer = BytesIO() 
+            img.save(buffer, format="PNG")
+            encoded = base64.b64encode(buffer.getvalue()).decode()
+            return f'<img src="data:image/png;base64,{encoded}" width="150"/>'
+        except:
+            return "불러오기 실패"
 
     dup_column = ['파일명', '파일해쉬', '촬영일', '파일생성일']
     key_col = st.selectbox("집계 컬럼 선택", dup_column, index=1)
     df_stat = get_file_stat(df, key_col)
+    
+    # 미리보기 이미지 컬럼 추가
+    df_stat['미리보기'] = df_stat['thumnail_file'].apply(
+        lambda x: image_to_base64(x) if os.path.exists(x) else '파일 없음'
+    ) 
+    df_stat = df_stat.drop('thumnail_file', axis=1)
+
+
+    # st.dataframe(df, use_container_width=True)
+    # st.dataframe(df_stat, use_container_width=True)
+    # st.write(df.dtypes)
+    # st.write(df_stat.dtypes)
 
     st.button("중복파일 삭제", on_click=del_file_dup, args=("C:\\사진_20240726_1231\\20241231_100853 - 복사본.jpg", "4e90ddece508a16aa7841617ab02613b"))
 
@@ -165,25 +182,38 @@ def show_list_stat():
         return
     
     # 링크가 추가된 데이터프레임 생성
-    df_with_links = add_links_to_dataframe(df_display)
+    df_with_links = add_links_to_dataframe(df_display) 
 
     # 상단 설명
     st.subheader("통계 데이터")
     st.info("각 셀을 클릭하면 해당 열(col_name)과 값(value)으로 필터링된 결과를 확인할 수 있습니다.")
 
+
+    html_table = df_with_links.to_html(escape=False, index=False, col_space=None)
+    st.markdown(html_table, unsafe_allow_html=True)
+    
+    html_with_font_size = html_table.replace('<table border="1" class="dataframe">', '<table border="1" class="dataframe" style="font-size: 9pt;">')
+    
+    # 리스트 값을 줄 바꿈으로 변환
+    for col in df_stat.columns[1:]:
+        # 각 컬럼의 리스트 값을 <br> 태그로 변환
+        html_with_font_size = html_with_font_size.replace(f'<td>{col}</td>', f'<td>{"".join(f"<br>{item}" for item in df_stat[col])}</td>')
+        
     # HTML로 렌더링
-    st.markdown(df_with_links.to_html(escape=False), unsafe_allow_html=True)
+    st.markdown(html_with_font_size, unsafe_allow_html=True)
+
 
     # 원본 데이터프레임도 표시 (참고용)
     st.subheader("원본 데이터 (링크 없음)")
     st.dataframe(df_display)
-    st.session_state.selected_image_path = "C:\\사진_20240726_1231\\20240726_185220 - 복사본.jpg"
-show_list_stat()
 
+show_list_stat()
+st.session_state.selected_image_path = r"C:\Users\User\Pictures\20~30세(12장)\임주아_21세_f(1).png"
 
 # 이미지 팝업 (같은 페이지 내 하단에 표시)
 if st.session_state.selected_image_path:
     st.markdown("---")
+    st.write(st.session_state.selected_image_path)
     st.subheader("🖼 선택된 이미지 보기")
     try:
         # 이미지 로드
